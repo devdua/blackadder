@@ -1,5 +1,5 @@
 #!/usr/bin/python
-import os, subprocess, csv, string
+import os, subprocess, csv, string, collections
 from flask import Flask, render_template, request, redirect, url_for, send_from_directory
 from werkzeug import secure_filename
 
@@ -46,6 +46,7 @@ def runface():
     result_data = {}
     for i,j in zip(similarity,files):
         result_data[i] = j
+    result_data = collections.OrderedDict(sorted(result_data.items(), reverse=True))
     return render_template('results.html', r = result_data, uploaded = filename)
 
 if __name__ == '__main__':
