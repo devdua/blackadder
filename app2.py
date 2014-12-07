@@ -19,7 +19,9 @@ def index():
 @app.route('/run', methods=['GET','POST'])
 def runface():
     file = request.files['file']
-    if file and allowed_file(file.filename):
+    if file.filename=='' :
+        return render_template('error.html')
+    elif file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
         file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
     enroll = ['br' ,'-algorithm', 'FaceRecognition', '-enrollAll' ,'-enroll', '/home/acl/cloudlet/static/faceDB' ,'/home/acl/cloudlet/faceGal.gal']
@@ -28,7 +30,7 @@ def runface():
     p.wait()
     p = subprocess.Popen(recogsearch)
     p.wait()
-    similarity = [0.0]*9
+    similarity = [0.0]*10
     files = []
     f = open('/home/acl/cloudlet/Results/faceSearch.csv', 'rb')
     reader = csv.reader(f)
@@ -41,7 +43,7 @@ def runface():
         elif i!=0:
             similarity[j] = 100*float(row[1])
             j += 1
-    for x in xrange(1,10):
+    for x in xrange(1,11):
         files.append("/static/faceDB/"+str(x)+".jpg")
     result_data = {}
     for i,j in zip(similarity,files):
