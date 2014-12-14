@@ -20,8 +20,8 @@ def hash_password(password):
         return pwd_context.encrypt(password)
 
 def get_user(username):
-    posts = db.posts
-    user = posts.find_one({"username": username})
+    users = db.users
+    user = users.find_one({"username": username})
     return user
 
 @app.route('/api/add_user', methods = ['POST'])
@@ -31,23 +31,23 @@ def new_user():
     username = request.json.get('username')
     password = request.json.get('password')
     print root_user + ' ' + root_password
+    print username + ' ' + password
     if root_user is None or root_password is None:
         abort(400)
     elif root_user == 'capt_quirk':
         if root_password != 'black-adder':
-            abort(400)
+            return jsonify({"error":"Unauthorized!"})
     else:
-        abort(400)
-
+        return jsonify({"error":"Unauthorized!"})
     if username is None or password is None:
         abort(400) # missing arguments
     if get_user(username) is not None:
-        abort(400) # existing user
+        return jsonify({"error":"user exists!"}) # existing user
     #user = User(username = username)
     password = hash_password(password)
-    posts = db.posts
+    users = db.users
     user = {"username" : username, "password" : password}
-    id = posts.insert(user)
+    id = users.insert(user)
     return jsonify({ 'username': username , "status" : "User added!"})
 
 @app.route('/')
