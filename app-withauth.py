@@ -1,4 +1,6 @@
 #!/usr/bin/python
+import datetime
+from flask.ext.httpauth import HTTPBasicAuth
 from passlib.apps import custom_app_context as pwd_context
 from pymongo import MongoClient
 import os, subprocess, csv, string, collections
@@ -11,6 +13,7 @@ app.config['UPLOAD_FOLDER'] = 'static/uploads/'
 app.config['ALLOWED_EXTENSIONS'] = set(['png', 'jpg', 'jpeg'])
 client = MongoClient('mongodb://dev-blackadder:blackadder1234@ds056727.mongolab.com:56727/blackadder?authMechanism=MONGODB-CR')
 db = client.blackadder
+auth = HTTPBasicAuth()
 
 def allowed_file(filename):
     return '.' in filename and \
@@ -19,10 +22,25 @@ def allowed_file(filename):
 def hash_password(password):
         return pwd_context.encrypt(password)
 
+def verifypassword(username,password):
+    users = db.users
+    user = users.find_one({"username": username})
+    pwd = user['password']    
+    return pwd_context.verify(password, pwd)
+
 def get_user(username):
     users = db.users
     user = users.find_one({"username": username})
     return user
+
+@auth.verify_password
+def verify_password(username, password):
+    user = get_user(username)
+    if not user or not verifypassword(username,password):
+        return False
+    d = datetime.datetime.now()
+    print 'User '+username+' logged in at ',d
+    return True
 
 @app.route('/api/add_user', methods = ['POST'])
 def new_user():
@@ -51,6 +69,7 @@ def new_user():
     return jsonify({ 'username': username , "status" : "User added!"})
 
 @app.route('/')
+@auth.login_required
 def index():
     return render_template('index.html')
 
