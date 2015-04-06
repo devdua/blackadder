@@ -5,12 +5,14 @@ from passlib.apps import custom_app_context as pwd_context
 from pymongo import MongoClient
 import os, subprocess, csv, string, collections
 import json
+from bson import json_util
 from flask import Flask, abort, jsonify, render_template, request, redirect, url_for, send_from_directory
 from werkzeug import secure_filename
 
 app = Flask(__name__,static_folder='static')
 
 app.config['UPLOAD_FOLDER'] = 'static/uploads/'
+app.config['FACE_DB'] = 'static/faceDB/UserFaces/'
 app.config['ALLOWED_EXTENSIONS'] = set(['png', 'jpg', 'jpeg'])
 client = MongoClient('mongodb://dev-blackadder:blackadder1234@ds056727.mongolab.com:56727/blackadder?authMechanism=MONGODB-CR')
 db = client.blackadder
@@ -106,10 +108,31 @@ def runface():
     result_data = {}
     for i,j in zip(similarity,files):
         result_data[i] = j
-    result_dAPPata = collections.OrderedDict(sorted(result_data.items(), reverse=True))
+    result_data = collections.OrderedDict(sorted(result_data.items(), reverse=True))
     return render_template('results.html', r = result_data, uploaded = filename)
 
-@app.route('/recog', methods=['PUT','POST'])
+@app.route('/enroll', methods=['PUT'])
+def enroll_person():
+    FaceName = request.headers.get('Who')
+    print FaceName
+    FaceList = []
+    Base64Image = request.data.split(',')
+    for n in range(0,3):
+	filename = (app.config['FACE_DB']+FaceName+"_"+str(n)+".jpg")
+	FaceList.append(filename)
+	file = open(filename, "wb")
+    	file.write(Base64Image[n].decode('base64'))
+    	file.close()
+    enroll = ['br' ,'-algorithm', 'FaceRecognition', '-enrollAll' ,'-enroll', app.config['FACE_DB'] ,'faceGal.gal']
+    p = subprocess.Popen(enroll)
+    p.wait()
+    print FaceList
+    faces = db.faces
+    FaceRecord = {"Name" : FaceName, "FaceList" : FaceList}
+    id = faces.insert(FaceRecord)
+    return str(id)
+
+@app.route('/recog', methods=['PUT'])
 def recogface():
     #print request.data
     Base64Image = request.data
@@ -129,27 +152,50 @@ def recogface():
     p.wait()
     p = subprocess.Popen(recogsearch)
     p.wait()
-    similarity = [0.0]*11
+    similarity = []
     files = []
+    fields = ("File","Similarity")
     f = open('Results/faceSearch.csv', 'rb')
-    reader = csv.reader(f)
+    reader = csv.DictReader(f, fields)
     i = 0
     j = 0
     k = 0
+    #result_data = []
     for row in reader:
-        if i == 0:
+#        if i == 0:
+#	    i == 1
+#	elif i != 0:    
+ #       print row
+#	result_data.append(row)
+	
+	if i == 0:
             i = 1
         elif i!=0:
-            similarity[j] = 100*float(row[1])
-            j += 1
-    for x in xrange(1,12):
-        files.append("/static/faceDB/"+str(x)+".jpg")
-    result_data = {}
+            similarity.append(100*float(row["Similarity"]))
+	    files.append(row["File"].replace("/home/dev/blackadder/",""))
+            #j += 1
+    #for x in xrange(1,15):
+    #    files.append("/static/faceDB/"+str(x)+".jpg")
+    result_data = []
     for i,j in zip(similarity,files):
-        result_data[i] = j
-    result_data = collections.OrderedDict(sorted(result_data.items(), reverse=True))
+        result_data.append({"Similarity":i,"File":j})
+    #result_data = collections.OrderedDict(sorted(result_data.items(), reverse=True))
     #return render_template('results.html', r = result_data, uploaded = filename)
-    return json.dumps(result_data)
+    def extract_similarity(json):
+	try:
+	    return float(json['Similarity'])
+	except KeyError:
+	    return 0
+
+    result_data.sort(key=extract_similarity, reverse=True)
+    RecogResults = json.dumps(result_data)
+    TopResult = json.loads(RecogResults)[0]
+    MaxHitImage = TopResult["File"]
+    print MaxHitImage
+    faces = db.faces
+    user = faces.find_one({ "FaceList" :  MaxHitImage})
+    print user["Name"]
+    return json.dumps(user, default = json_util.default)
 
 if __name__ == '__main__':
     app.run(debug=True,host='0.0.0.0',threaded=True)
