@@ -4,7 +4,6 @@ from flask.ext.httpauth import HTTPBasicAuth
 from passlib.apps import custom_app_context as pwd_context
 from pymongo import MongoClient
 import os, subprocess, csv, string, collections
-import json
 from flask import Flask, abort, jsonify, render_template, request, redirect, url_for, send_from_directory
 from werkzeug import secure_filename
 
@@ -111,18 +110,18 @@ def runface():
 
 @app.route('/recog', methods=['PUT','POST'])
 def recogface():
-    #print request.data
+    print request.data
     Base64Image = request.data
     file = open(app.config['UPLOAD_FOLDER']+"imageuploaded.jpg", "wb")
-    file.write(Base64Image.decode('base64'))
+    file.write(Base64Image.d
+ecode('base64'))
     file.close()
     file = open(app.config['UPLOAD_FOLDER']+"imageuploaded.jpg", "rb")
-    filename = "imageuploaded.jpg"
     #if file.filename=='' :
-    #    return render_template('error.html')
-    #elif file and allowed_file(file.filename):
+     #   return render_template('error.html')
+   # elif file and allowed_file(file.filename):
     #    filename = secure_filename(file.filename)
-    #    file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+     #   file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
     enroll = ['br' ,'-algorithm', 'FaceRecognition', '-enrollAll' ,'-enroll', 'static/faceDB' ,'faceGal.gal']
     recogsearch = ['br' ,'-algorithm', 'FaceRecognition', '-compare' ,'static/uploads/'+filename , 'faceGal.gal', 'Results/faceSearch.csv']
     p = subprocess.Popen(enroll)
@@ -148,8 +147,7 @@ def recogface():
     for i,j in zip(similarity,files):
         result_data[i] = j
     result_data = collections.OrderedDict(sorted(result_data.items(), reverse=True))
-    #return render_template('results.html', r = result_data, uploaded = filename)
-    return json.dumps(result_data)
+    return render_template('results.html', r = result_data, uploaded = filename)
 
 if __name__ == '__main__':
     app.run(debug=True,host='0.0.0.0',threaded=True)
