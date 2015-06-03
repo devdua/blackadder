@@ -1,23 +1,20 @@
 #!/usr/bin/python
 import datetime
-import time
 from flask.ext.httpauth import HTTPBasicAuth
 from passlib.apps import custom_app_context as pwd_context
 from pymongo import MongoClient
 import os, subprocess, csv, string, collections
 import json
-from bson import json_util
 from flask import Flask, abort, jsonify, render_template, request, redirect, url_for, send_from_directory
 from werkzeug import secure_filename
 
 app = Flask(__name__,static_folder='static')
 
-app.config['UPLOAD_FOLDER'] = '/home/dev/blackadder/static/uploads/'
-app.config['FACE_DB'] = '/home/dev/blackadder/static/faceDB/UserFaces/'
+app.config['UPLOAD_FOLDER'] = 'static/uploads/'
+app.config['FACE_DB'] = 'static/faceDB/UserFaces/'
 app.config['ALLOWED_EXTENSIONS'] = set(['png', 'jpg', 'jpeg'])
 client = MongoClient('mongodb://dev-blackadder:blackadder1234@ds056727.mongolab.com:56727/blackadder?authMechanism=MONGODB-CR')
 db = client.blackadder
-faces = db.faces
 auth = HTTPBasicAuth()
 
 def allowed_file(filename):
@@ -122,7 +119,7 @@ def enroll_person():
     for n in range(0,3):
 	filename = (app.config['FACE_DB']+FaceName+"_"+str(n)+".jpg")
 	FaceList.append(filename)
-	file = open(filename, 'wb')
+	file = open(filename, "wb")
     	file.write(Base64Image[n].decode('base64'))
     	file.close()
     enroll = ['br' ,'-algorithm', 'FaceRecognition', '-enrollAll' ,'-enroll', app.config['FACE_DB'] ,'faceGal.gal']
@@ -137,9 +134,8 @@ def enroll_person():
 @app.route('/recog', methods=['PUT'])
 def recogface():
     #print request.data
-    startTime = int(round(time.time() * 1000))
     Base64Image = request.data
-    file = open(app.config['UPLOAD_FOLDER']+"imageuploaded.jpg", 'wb')
+    file = open(app.config['UPLOAD_FOLDER']+"imageuploaded.jpg", "wb")
     file.write(Base64Image.decode('base64'))
     file.close()
     file = open(app.config['UPLOAD_FOLDER']+"imageuploaded.jpg", "rb")
@@ -149,8 +145,8 @@ def recogface():
     #elif file and allowed_file(file.filename):
     #    filename = secure_filename(file.filename)
     #    file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-    enroll = ['br' ,'-algorithm', 'FaceRecognition', '-enrollAll' ,'-enroll', app.config['FACE_DB'] ,'faceGal.gal']
-    recogsearch = ['br' ,'-algorithm', 'FaceRecognition', '-compare' ,app.config['UPLOAD_FOLDER']+filename , 'faceGal.gal', 'Results/faceSearch.csv']
+    enroll = ['br' ,'-algorithm', 'FaceRecognition', '-enrollAll' ,'-enroll', 'static/faceDB' ,'faceGal.gal']
+    recogsearch = ['br' ,'-algorithm', 'FaceRecognition', '-compare' ,'static/uploads/'+filename , 'faceGal.gal', 'Results/faceSearch.csv']
     p = subprocess.Popen(enroll)
     p.wait()
     p = subprocess.Popen(recogsearch)
@@ -170,7 +166,7 @@ def recogface():
 #	elif i != 0:    
  #       print row
 #	result_data.append(row)
-#	print row
+	
 	if i == 0:
             i = 1
         elif i!=0:
@@ -184,25 +180,12 @@ def recogface():
         result_data.append({"Similarity":i,"File":j})
     #result_data = collections.OrderedDict(sorted(result_data.items(), reverse=True))
     #return render_template('results.html', r = result_data, uploaded = filename)
-    def extract_similarity(json):
-	try:
-	    return float(json['Similarity'])
-	except KeyError:
-	    return 0
-
-    result_data.sort(key=extract_similarity, reverse=True)
-    RecogResults = json.dumps(result_data)
-    TopResult = json.loads(RecogResults)[0]
-    MaxHitImage = TopResult["File"]
-    print MaxHitImage
-    #faces = db.faces
-    user = faces.find_one({ "FaceList" :  MaxHitImage})
-    if(user):
-	print int(round(time.time() * 1000)) - startTime 
-	print user["Name"]
-        return json.dumps(user, default = json_util.default)
-    print int(round(time.time() * 1000)) - startTime
-    return ""
+    
+    RecogResults = json.dumps(result_data, sort_keys=True)
+    TopResult = RecogResults[0]
+    faces = db.faces
+    user = faces.find( { }, FaceList :  
+    return RecogResults
 
 if __name__ == '__main__':
-    app.run(debug=True,host='0.0.0.0',threaded=True,use_reloader=False)
+    app.run(debug=True,host='0.0.0.0',threaded=True)
