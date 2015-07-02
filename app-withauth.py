@@ -120,7 +120,9 @@ def enroll_person():
     FaceList = []
     Base64Image = request.data.split(',')
     for n in range(0,3):
-	filename = (app.config['FACE_DB']+FaceName+"_"+str(n)+".jpg")
+	#filename = (app.config['FACE_DB']+FaceName+"_"+str(n)+".jpg")
+	filename = (app.config['FACE_DB'].replace("/home/dev/blackadder/","")+FaceName+"_"+str(n)+".jpg")
+
 	FaceList.append(filename)
 	file = open(filename, 'wb')
     	file.write(Base64Image[n].decode('base64'))
@@ -128,7 +130,10 @@ def enroll_person():
     enroll = ['br' ,'-algorithm', 'FaceRecognition', '-enrollAll' ,'-enroll', app.config['FACE_DB'] ,'faceGal.gal']
     p = subprocess.Popen(enroll)
     p.wait()
-    print FaceList
+    
+    for face in FaceList:
+    	face.replace("/home/dev/blackadder/","")
+   	print FaceList
     faces = db.faces
     FaceRecord = {"Name" : FaceName, "FaceList" : FaceList}
     id = faces.insert(FaceRecord)
@@ -191,6 +196,7 @@ def recogface():
 	    return 0
 
     result_data.sort(key=extract_similarity, reverse=True)
+    #print result_data
     RecogResults = json.dumps(result_data)
     TopResult = json.loads(RecogResults)[0]
     MaxHitImage = TopResult["File"]
@@ -205,4 +211,4 @@ def recogface():
     return ""
 
 if __name__ == '__main__':
-    app.run(debug=True,host='0.0.0.0',threaded=True,use_reloader=False)
+    app.run(debug=True,host='0.0.0.0',threaded=True,use_reloader=True)
